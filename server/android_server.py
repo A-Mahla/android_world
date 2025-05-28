@@ -2,12 +2,14 @@ from contextlib import asynccontextmanager
 from typing import Annotated, Any
 
 import uvicorn
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
+from pydantic import BaseModel
+
 from android_world.env import interface, json_action
 from android_world.env.env_launcher import load_and_setup_env
 from android_world.registry import TaskRegistry
 from android_world.suite_utils import Suite, create_suite
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
-from pydantic import BaseModel
+from android_world.task_evals.miniwob.miniwob_base import get_episode_reward
 
 # Build the Docker image for the Android environment server from the root repository directory
 # docker build -t android_world:latest .
@@ -48,6 +50,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 suite_router = APIRouter(prefix="/suite", tags=["suite"])
 task_router = APIRouter(prefix="/task", tags=["task"])
+miniwob_router = APIRouter(prefix="/miniwob", tags=["miniwob"])
 
 
 def get_app_android_env(request: Request) -> interface.AsyncEnv:
@@ -65,6 +68,7 @@ AndroidSuite = Annotated[Suite, Depends(get_app_suite)]
 @app.post("/reset")
 async def reset(go_home: bool, app_android_env: AndroidEnv):
     app_android_env.reset(go_home=go_home)
+    app_android_env.get_state(wait_to_stabilize=True)
     return {"status": "success", "message": f"Environment reset with go_home={go_home}."}
 
 
@@ -124,6 +128,17 @@ async def initialize_task(task_type: str, task_idx: int, app_android_env: Androi
     return {"status": "success", "message": f"Task {task_type} {task_idx} initialized."}
 
 
+@task_router.post("/start_on_home_screen")
+async def start_on_home_screen(task_type: str, task_idx: int, app_suite: AndroidSuite):
+    start_on_home_screen = app_suite[task_type][task_idx].start_on_home_screen
+    return {"start_on_home_screen": start_on_home_screen}
+
+
+@task_router.post("/complexity")
+async def get_task_complexity(task_type: str, task_idx: int, app_suite: AndroidSuite):
+    return {"complexity": app_suite[task_type][task_idx].complexity}
+
+
 @task_router.post("/tear_down")
 async def tear_down_task(task_type: str, task_idx: int, app_android_env: AndroidEnv, app_suite: AndroidSuite):
     app_suite[task_type][task_idx].tear_down(app_android_env)
@@ -145,6 +160,11 @@ async def get_task_template(task_type: str, task_idx: int, app_suite: AndroidSui
     return {"template": app_suite[task_type][task_idx].template}
 
 
+@miniwob_router.get("/is_epidode_terminated")
+async def is_epidode_terminated(app_android_env: AndroidEnv):
+    return {"is_epidode_terminated": get_episode_reward(app_android_env.controller.env) != 0.0}
+
+
 @app.post("/close")
 async def close(app_android_env: AndroidEnv):
     app_android_env.close()
@@ -158,6 +178,7 @@ async def health(app_android_env: AndroidEnv):
     raise HTTPException(status_code=500, detail="Environment not initialized")
 
 
+task_router.include_router(miniwob_router)
 app.include_router(suite_router)
 app.include_router(task_router)
 
