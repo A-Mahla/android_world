@@ -100,12 +100,6 @@ function hidden_policy() {
   adb shell "settings put global hidden_api_policy_pre_p_apps 1;settings put global hidden_api_policy_p_apps 1;settings put global hidden_api_policy 1"
 };
 
-function disable_pointer_location() {
-  adb shell settings put system pointer_location 0
-  adb shell settings put global pointer_location 0
-  adb shell settings put secure pointer_location 0
-}
-
 launch_emulator
 sleep 2
 check_emulator_status
@@ -113,6 +107,4 @@ sleep 1
 disable_animation
 sleep 1
 hidden_policy
-sleep 1
-disable_pointer_location
 sleep 1

@@ -1,15 +1,15 @@
+import os
 from contextlib import asynccontextmanager
 from typing import Annotated, Any
 
 import uvicorn
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
-from pydantic import BaseModel
-
 from android_world.env import interface, json_action
 from android_world.env.env_launcher import load_and_setup_env
 from android_world.registry import TaskRegistry
 from android_world.suite_utils import Suite, create_suite
 from android_world.task_evals.miniwob.miniwob_base import get_episode_reward
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
+from pydantic import BaseModel
 
 # Build the Docker image for the Android environment server from the root repository directory
 # docker build -t android_world:latest .
@@ -32,6 +32,12 @@ async def lifespan(app: FastAPI):
         freeze_datetime=True,
         adb_path="/opt/android/platform-tools/adb",
     )
+
+    # Disable pointer location
+    os.popen(
+        "adb shell settings put system pointer_location 0; adb shell settings put global pointer_location 0; adb shell settings put secure pointer_location 0"
+    )
+
     task_registry = TaskRegistry()
     aw_registry = task_registry.get_registry(task_registry.ANDROID_WORLD_FAMILY)
     suite = create_suite(
