@@ -17,7 +17,7 @@ dependencies = [
     "grpcio-tools",
     "immutabledict==2.0.0",
     "IPython",
-    "jsonschema==4.17.3",
+    "jsonschema>=4.17.3",
     "matplotlib>=3.6.1",
     "numpy>=1.26.3",
     "opencv-python",
@@ -30,6 +30,7 @@ dependencies = [
     "termcolor",
     "fastapi",
     "uvicorn",
+    "protobuf>=4.21.5,<6.0.0.dev0",
 ]
 
 [project.optional-dependencies]
